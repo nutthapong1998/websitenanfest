@@ -1,0 +1,4 @@
+# The image only needs Wrangler + the entrypoint script (dist/ is mounted at
+# runtime). Keep the build context tiny: ignore everything except the script.
+*
+!app-entrypoint.sh

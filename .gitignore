@@ -1,0 +1,53 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+.output
+.vinxi
+.tanstack/**
+.nitro
+*.local
+
+# Env (มี VITE_R2_BASE — เก็บค่าจริงไว้ในเครื่อง ไม่ขึ้น git)
+.env
+.env.*
+!.env.example
+
+# Wrangler / Cloudflare
+.wrangler/
+.dev.vars
+
+# Heavy media — เก็บบน Cloudflare R2 ไม่เก็บใน git (กันไฟล์ใหญ่เกินลิมิต GitHub 100MB)
+*.mp4
+*.mov
+*.webm
+*.wav
+
+# รูปของ Showcase2026 ที่ย้ายไป R2 หมดแล้ว (ใช้ string path → ไม่ได้ ES-import)
+# Nanlife ไม่ใส่ เพราะถูก import ในหน้า /nan2026/life ด้วย
+src/assets/Nanfestshowcase2026/
+src/assets/jaiban/
+src/assets/sp/
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Local TLS certificates (Cloudflare Origin Cert)
+certs/*.pem
+certs/*.key
