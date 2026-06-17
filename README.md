@@ -72,14 +72,63 @@ import { mediaUrl } from "@/lib/media";
 
 📄 วิธีตั้งค่า R2 bucket และอัปโหลดไฟล์ ดูที่ **[R2.md](R2.md)**
 
+## Scripts (ใน `scripts/`)
+
+bash script ช่วยจัดการ media ก่อนนำขึ้น R2 — รันจาก root ของโปรเจกต์
+
+### 🎬 `compress-videos.sh` — บีบวิดีโอ
+
+บีบวิดีโอทุกไฟล์ใน `src/assets` แล้วเซฟลง `dist-media/` (ไม่ทับต้นฉบับ)
+ฉลาดพอที่จะ **re-encode เฉพาะไฟล์ bitrate สูง** ส่วนไฟล์ที่บีบมาดีแล้วจะแค่ remux ใส่ `faststart` (lossless + กดเล่นแล้วเริ่มทันที)
+
+```bash
+./scripts/compress-videos.sh
+```
+
+ต้องมี **ffmpeg** (`brew install ffmpeg` / `apt install ffmpeg`)
+
+ปรับแต่งผ่าน env var (ไม่ใส่ก็ใช้ค่า default):
+| ตัวแปร | default | ความหมาย |
+|---|---|---|
+| `CRF` | `21` | คุณภาพ re-encode (ยิ่งน้อยยิ่งคมแต่ไฟล์ใหญ่) |
+| `PRESET` | `medium` | ความเร็ว/อัตราบีบของ x264 |
+| `THRESHOLD_KBPS` | `4000` | bitrate ที่เกินค่านี้ถึงจะ re-encode |
+
+```bash
+CRF=23 PRESET=slow ./scripts/compress-videos.sh   # ตัวอย่างปรับค่า
+```
+
+### ☁️ `upload-media-to-r2.sh` — อัป media ขึ้น R2
+
+อัปวิดีโอ (จาก `dist-media/`), เสียง และรูปของ Showcase2026 (จาก `src/assets/`)
+ขึ้น R2 โดยใช้ path เป็น object key ให้ตรงกับ `mediaUrl()` ในโค้ด
+
+```bash
+# ติดตั้ง + login wrangler ก่อน (ครั้งเดียว)
+npm i -g wrangler && wrangler login
+
+# อัปขึ้น bucket (ระบุชื่อ bucket ผ่าน BUCKET)
+BUCKET=nanfest-media ./scripts/upload-media-to-r2.sh
+```
+
+| ตัวแปร | default | ความหมาย |
+|---|---|---|
+| `BUCKET` | `nanfest-media` | ชื่อ R2 bucket ปลายทาง |
+
+> ลำดับที่ถูกต้อง: `compress-videos.sh` ก่อน → แล้วค่อย `upload-media-to-r2.sh`
+> (ดูขั้นตอนเต็มใน **[R2.md](R2.md)**)
+
 ## Deploy ด้วย Docker
 
 รันหลัง nginx + TLS บน Cloudflare Workers runtime (workerd) — build เกิดในตัว Docker (ไม่ต้อง `npm run build` บน host)
 
 ```bash
-docker compose up -d --build   # build + รัน (nginx + worker)
+docker compose up -d --build   # รอบแรก + ทุกครั้งที่แก้โค้ด (rebuild image)
+docker compose up -d           # แค่ start ตอนไม่ได้แก้โค้ด (เช่นหลัง down/reboot)
 docker compose down            # หยุดและลบ container
 ```
+
+> ⚠️ โค้ดถูก bake เข้า image ตอน build — **แก้โค้ดแล้วต้องใส่ `--build` เสมอ** ไม่งั้นจะได้ image (โค้ด) เก่า
 
 📄 รายละเอียดการ deploy ดูที่ **[DOCKER.md](DOCKER.md)**
 
