@@ -16,6 +16,9 @@ dist-ssr
 .nitro
 *.local
 
+# backup รูปต้นฉบับก่อน resize (เก็บในเครื่อง ไม่ขึ้น git)
+.image-originals/
+
 # Env (มี VITE_R2_BASE — เก็บค่าจริงไว้ในเครื่อง ไม่ขึ้น git)
 .env
 .env.*
@@ -30,6 +33,9 @@ dist-ssr
 *.mov
 *.webm
 *.wav
+
+# ผลลัพธ์จาก compress-videos.sh (วิดีโอบีบแล้ว → อัปขึ้น R2 ไม่เก็บใน git)
+dist-media/
 
 # รูปของ Showcase2026 ที่ย้ายไป R2 หมดแล้ว (ใช้ string path → ไม่ได้ ES-import)
 # Nanlife ไม่ใส่ เพราะถูก import ในหน้า /nan2026/life ด้วย

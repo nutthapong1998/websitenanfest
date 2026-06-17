@@ -2,14 +2,15 @@ services:
   app:
     build:
       context: .
+      target: app
+      args:
+        # ฝัง R2 base URL เข้า client bundle ตอน build (อ่านจาก .env อัตโนมัติ)
+        VITE_R2_BASE: ${VITE_R2_BASE}
     image: nanfest-app
     restart: unless-stopped
     environment:
       - NODE_ENV=production
-    volumes:
-      # Build output produced on the host with `npm run build`.
-      # Mounted read-write because Wrangler creates a .wrangler/ scratch dir here.
-      - ./dist:/app/dist
+    # dist ถูก build + bake เข้า image แล้ว ไม่ต้อง mount จาก host
     # Internal only — reachable from nginx as http://app:8787, not exposed to the host.
     expose:
       - "8787"
@@ -17,7 +18,12 @@ services:
       - web
 
   nginx:
-    image: nginx:1.27-alpine
+    build:
+      context: .
+      target: web
+      args:
+        VITE_R2_BASE: ${VITE_R2_BASE}
+    image: nanfest-web
     restart: unless-stopped
     depends_on:
       - app
@@ -26,8 +32,7 @@ services:
       - "443:443"
     volumes:
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
-      # Static client build — nginx serves these files directly.
-      - ./dist/client:/usr/share/nginx/html:ro
+      # static client build ถูก bake เข้า image แล้ว (ไม่ต้อง mount ./dist/client)
       # Cloudflare Origin Certificate + key live here (see DOCKER.md).
       - ./certs:/etc/nginx/certs:ro
     networks:
