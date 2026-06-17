@@ -74,11 +74,11 @@ import { mediaUrl } from "@/lib/media";
 
 ## Deploy ด้วย Docker
 
-รันหลัง nginx + TLS บน Cloudflare Workers runtime (workerd)
+รันหลัง nginx + TLS บน Cloudflare Workers runtime (workerd) — build เกิดในตัว Docker (ไม่ต้อง `npm run build` บน host)
 
 ```bash
-npm run build              # build dist/ บน host ก่อน
-docker compose up -d       # เสิร์ฟผ่าน nginx + worker
+docker compose up -d --build   # build + รัน (nginx + worker)
+docker compose down            # หยุดและลบ container
 ```
 
 📄 รายละเอียดการ deploy ดูที่ **[DOCKER.md](DOCKER.md)**
