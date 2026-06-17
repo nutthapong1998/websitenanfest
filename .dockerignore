@@ -1,4 +1,40 @@
-# The image only needs Wrangler + the entrypoint script (dist/ is mounted at
-# runtime). Keep the build context tiny: ignore everything except the script.
-*
-!app-entrypoint.sh
+# build เกิดใน Docker แล้ว — ต้องส่ง source เข้า build context
+# กันเฉพาะของที่ไม่ต้องใช้ / หนัก / เป็นความลับ
+
+# deps + ผลลัพธ์ build (ติดตั้ง/สร้างใหม่ใน container)
+node_modules
+dist
+dist-ssr
+.output
+.vinxi
+.nitro
+.tanstack
+.wrangler
+
+# version control / editor
+.git
+.gitignore
+.vscode
+.idea
+.DS_Store
+
+# env (ส่งค่าผ่าน build arg แทน ไม่เอาไฟล์ลับเข้า image)
+.env
+.env.*
+
+# media หนัก — อยู่บน Cloudflare R2 แล้ว ไม่ต้องเข้า build
+*.mp4
+*.mov
+*.webm
+*.wav
+src/assets/Nanfestshowcase2026
+src/assets/jaiban
+src/assets/sp
+
+# TLS certs (mount ผ่าน compose ตอน runtime)
+certs
+
+# docs / docker meta
+*.md
+Dockerfile
+docker-compose.yml

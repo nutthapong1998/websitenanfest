@@ -5,26 +5,20 @@ Worker. This setup self-hosts it behind nginx with TLS terminated by your
 **Cloudflare Origin Certificate**.
 
 ```
-Internet ─▶ Cloudflare (proxied DNS) ─TLS─▶ nginx :443 ─┬─ /assets/* ─▶ static files (./dist/client)
+Internet ─▶ Cloudflare (proxied DNS) ─TLS─▶ nginx :443 ─┬─ /assets/* ─▶ static files (dist/client)
                                                         └─ everything else ─▶ app :8787 (Worker SSR)
 ```
 
 ## Why this shape
 
-Two things about this app drive the design:
+1. **Build เกิดในตัว Docker** (multi-stage build) — ไม่ต้อง `npm run build` บน host
+   อีกต่อไป ทำได้เพราะไฟล์ media หนักถูกย้ายไป Cloudflare R2 แล้ว (ดู [R2.md](R2.md))
+   build context จึงเล็กพอที่ `vite build` ไม่ OOM
+2. nginx เสิร์ฟไฟล์ static ตรงๆ (รองรับ byte-range สำหรับวิดีโอ/เสียง) และ
+   **Worker ทำแค่ SSR** — app container strip asset binding ออกจาก config ตอน start
 
-1. **The build is ~6 GB** (it bundles a large media library). Building it
-   *inside* Docker OOMs a normal Docker VM, so you build on the host and the
-   container just runs the output.
-2. **Many media files exceed Cloudflare Workers' 25 MiB-per-asset limit**
-   (videos up to ~160 MB, audio up to ~110 MB). The Worker can't serve those, so
-   **nginx serves all static files directly** (no size limit, with byte-range
-   support for video/audio) and the **Worker handles SSR only**. The app
-   container strips the asset binding from the generated config at startup.
-
-> Note: because of (2), this app also can't be deployed to Cloudflare Workers
-> as-is — the same 25 MiB limit applies there. To put it on Cloudflare you'd
-> need to host those large media files elsewhere (R2, a CDN, etc.).
+> ทั้ง dist/client (static) และ dist/server (worker) ถูก build แล้ว **bake เข้า image**
+> ตอน `docker compose build` ไม่มีการ mount `./dist` จาก host อีกแล้ว
 
 ## 1. Add your Cloudflare Origin Certificate
 
@@ -43,18 +37,24 @@ Set the Cloudflare SSL/TLS mode to **Full (strict)**.
 Edit `nginx/conf.d/default.conf` and replace `example.com www.example.com`
 on the `server_name` line with your real domain.
 
-## 3. Build the app (on the host)
+## 3. ตั้งค่า R2 base URL
+
+แก้ไฟล์ `.env` ให้ `VITE_R2_BASE` ชี้ไป R2 bucket ของคุณ (ดู [R2.md](R2.md)):
 
 ```bash
-npm ci
-npm run build        # produces ./dist  (run this on a machine with >=8 GB free RAM)
+VITE_R2_BASE=https://media.nanfest.com
 ```
 
-## 4. Run
+> compose จะอ่าน `.env` แล้วส่งค่านี้เป็น **build arg** เพื่อฝังเข้า client bundle
+> (ค่านี้ต้องมีตอน build ไม่ใช่ตอน runtime)
+
+## 4. Build + Run
 
 ```bash
 docker compose up -d --build
 ```
+
+คำสั่งเดียวจบ — build dist ในตัว Docker แล้วรันทั้ง nginx + worker
 
 Check it:
 
@@ -73,16 +73,17 @@ public IP, with the **proxy (orange cloud) enabled**. Open ports **80** and
 ## Updating after code changes
 
 ```bash
-npm run build
-docker compose restart app          # app re-reads ./dist on start
-# (restart nginx too if client assets changed: docker compose restart nginx)
+git pull                            # เอาโค้ดล่าสุด
+docker compose up -d --build        # build ใหม่ + restart ในคำสั่งเดียว
 ```
+
+ไม่ต้องลง Node.js บน server แล้ว — Docker จัดการ build ให้ทั้งหมด
 
 ## Notes
 
-- `./dist` is mounted into both containers: the app (Worker bundle, read-write so
-  Wrangler can write its `.wrangler/` scratch dir) and nginx (`dist/client`,
-  read-only, served as static files).
+- **Build ใน Docker ใช้ RAM พอควร** (vite bundle รูป ES-import ~1GB) แนะนำให้
+  Docker VM มี RAM อย่างน้อย ~4–6GB ถ้า build แล้วโดน kill (OOM) ให้เพิ่ม RAM
+  ที่ Docker Desktop → Settings → Resources หรือเพิ่ม swap บน server
 - `app` is not published to the host — only nginx reaches it over the internal
   `web` network.
 - Real visitor IPs are restored from the `CF-Connecting-IP` header (see the
