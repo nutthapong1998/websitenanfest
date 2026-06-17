@@ -132,6 +132,81 @@ docker compose down            # หยุดและลบ container
 
 📄 รายละเอียดการ deploy ดูที่ **[DOCKER.md](DOCKER.md)**
 
+## Deploy บน Ubuntu Server (clone ไป `/opt/nanfestwebsite`)
+
+ขั้นตอนเต็มสำหรับติดตั้งครั้งแรกบน Ubuntu (22.04/24.04)
+
+### 1. ติดตั้ง Docker + git
+
+```bash
+sudo apt-get update
+sudo apt-get install -y git ca-certificates curl
+
+# Docker Engine + Compose plugin (official)
+curl -fsSL https://get.docker.com | sudo sh
+sudo usermod -aG docker $USER       # ให้รัน docker ได้โดยไม่ต้อง sudo
+# ออกจาก ssh แล้ว login ใหม่ 1 ครั้ง เพื่อให้กลุ่ม docker มีผล
+```
+
+### 2. Login GitHub (เลือกวิธีใดวิธีหนึ่ง)
+
+โปรเจกต์เป็น repo ส่วนตัว ต้อง auth ก่อน clone
+
+**วิธี ก) GitHub CLI (ง่ายสุด — ตั้ง credential ให้ git อัตโนมัติ)**
+```bash
+# ติดตั้ง gh
+sudo apt-get install -y gh        # ถ้าไม่มี: ดู https://cli.github.com
+gh auth login
+#   เลือก: GitHub.com → HTTPS → Login with a web browser (หรือ paste token)
+```
+
+**วิธี ข) Personal Access Token (PAT) + จำรหัสไว้**
+```bash
+# สร้าง token: GitHub → Settings → Developer settings →
+#   Personal access tokens → Fine-grained → ให้สิทธิ์ repo "websitenanfest" (Contents: Read)
+git config --global credential.helper store   # จำ credential หลัง login ครั้งแรก
+# ตอน git clone/pull จะถาม Username = ชื่อ GitHub, Password = วาง PAT (ไม่ใช่รหัสผ่านบัญชี)
+```
+
+### 3. Clone โปรเจกต์ไป `/opt/nanfestwebsite`
+
+```bash
+sudo mkdir -p /opt/nanfestwebsite
+sudo chown $USER:$USER /opt/nanfestwebsite          # ให้ user ปัจจุบันเป็นเจ้าของ
+git clone https://github.com/nutthapong1998/websitenanfest.git /opt/nanfestwebsite
+cd /opt/nanfestwebsite
+```
+
+### 4. ตั้งค่าก่อนรัน
+
+```bash
+cp .env.example .env
+nano .env                       # ใส่ VITE_R2_BASE = URL ของ R2 bucket (ดู R2.md)
+
+# ใส่ Cloudflare Origin Certificate (ดู DOCKER.md ข้อ 1)
+#   certs/cloudflare-origin.pem , certs/cloudflare-origin.key
+# แก้ domain ใน nginx/conf.d/default.conf (server_name)
+```
+
+### 5. รัน
+
+```bash
+docker compose up -d --build
+docker compose ps               # เช็กว่า container ขึ้นทั้ง app + nginx
+docker compose logs -f app      # ดู log (ควรขึ้น Ready on http://0.0.0.0:8787)
+```
+
+### 6. อัปเดตเป็นเวอร์ชันใหม่ (หลังมีการแก้โค้ดบน GitHub)
+
+```bash
+cd /opt/nanfestwebsite
+git pull                        # ดึงโค้ดล่าสุด
+docker compose up -d --build    # build ใหม่ + restart (ต้องมี --build เพราะโค้ด bake เข้า image)
+```
+
+> ถ้า `git pull` ติด conflict กับไฟล์ที่แก้ในเครื่อง (เช่น `.env` — แต่อันนี้ gitignore อยู่แล้ว)
+> ให้เช็ก `git status` ก่อน ปกติ `.env`/`certs` ถูก ignore จึงไม่ชนกับ pull
+
 ## Environment Variables
 
 | ตัวแปร | คำอธิบาย |
